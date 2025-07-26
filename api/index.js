@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -16,49 +15,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// MongoDB connection (for serverless, we'll connect on each request)
-let cachedDb = null;
-
-async function connectToDatabase() {
-  if (cachedDb) {
-    return cachedDb;
-  }
-   
-  try {
-    const db = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    cachedDb = db;
-    console.log('✅ Connected to MongoDB successfully');
-    return db;
-  } catch (err) {
-    console.error('❌ MongoDB connection error:', err);
-    throw err;
-  }
-}
-
-// Connect to database before handling requests
-app.use(async (req, res, next) => {
-  try {
-    await connectToDatabase();
-    next();
-  } catch (err) {
-    res.status(500).json({ 
-      status: 'error', 
-      message: 'Database connection failed',
-      error: process.env.NODE_ENV === 'development' ? err.message : 'Database error'
-    });
-  }
-});
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'success', 
     message: 'Interior Design Backend is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    database: 'Not connected (API mode)'
   });
 });
 
@@ -66,7 +30,11 @@ app.get('/api/health', (req, res) => {
 app.get('/api/test', (req, res) => {
   res.status(200).json({ 
     status: 'success', 
-    message: 'API is working correctly'
+    message: 'API is working correctly',
+    data: {
+      message: 'Hello from Interior Design API!',
+      features: ['Health Check', 'Test Endpoint', 'Ready for Development']
+    }
   });
 });
 
@@ -75,10 +43,13 @@ app.get('/', (req, res) => {
   res.status(200).json({ 
     status: 'success', 
     message: 'Interior Design API is running',
+    version: '1.0.0',
     endpoints: {
+      root: '/',
       health: '/api/health',
       test: '/api/test'
-    }
+    },
+    note: 'Database connection disabled for testing'
   });
 });
 
