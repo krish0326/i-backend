@@ -16,24 +16,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'success', 
-    message: 'Interior Design Backend is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Test endpoint
-app.get('/api/test', (req, res) => {
-  res.status(200).json({ 
-    status: 'success', 
-    message: 'API is working correctly'
-  });
-});
-
 // MongoDB connection (for serverless, we'll connect on each request)
 let cachedDb = null;
 
@@ -70,6 +52,36 @@ app.use(async (req, res, next) => {
   }
 });
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'success', 
+    message: 'Interior Design Backend is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.status(200).json({ 
+    status: 'success', 
+    message: 'API is working correctly'
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'success', 
+    message: 'Interior Design API is running',
+    endpoints: {
+      health: '/api/health',
+      test: '/api/test'
+    }
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -84,8 +96,10 @@ app.use((err, req, res, next) => {
 app.use('*', (req, res) => {
   res.status(404).json({ 
     status: 'error', 
-    message: 'Route not found' 
+    message: 'Route not found',
+    path: req.originalUrl
   });
 });
 
+// Export for Vercel serverless function
 module.exports = app; 
