@@ -34,10 +34,10 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] 
-    : ['http://localhost:3000'],
-  credentials: true
+  origin: true, // Allow all origins in development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept']
 }));
 
 // Body parsing middleware
@@ -85,27 +85,40 @@ app.use('*', (req, res) => {
   });
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log('✅ Connected to MongoDB successfully');
+// MongoDB connection with fallback
+const connectToMongoDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('✅ Connected to MongoDB successfully');
+    return true;
+  } catch (err) {
+    console.warn('⚠️ MongoDB connection failed, running without database:', err.message);
+    console.log('📝 Note: Contact form data and chat messages will not be saved to database');
+    return false;
+  }
+};
+
+// Start server regardless of MongoDB connection
+const startServer = async () => {
+  const mongoConnected = await connectToMongoDB();
   
   // Start server
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📱 Environment: ${process.env.NODE_ENV}`);
+    if (!mongoConnected) {
+      console.log('💾 Running in memory-only mode (no database)');
+    }
   });
 
   // Setup Socket.IO
   setupSocketIO(server);
-})
-.catch((err) => {
-  console.error('❌ MongoDB connection error:', err);
-  process.exit(1);
-});
+};
+
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
